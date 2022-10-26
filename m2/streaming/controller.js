@@ -13,6 +13,9 @@ noble.on("stateChange", async (state) => {
 });
 
 noble.on("discover", async (peripheral) => {
+    if (peripheral.advertisement.localName !== "Cole's Nano 33 IoT") {
+        return;
+    }
     await noble.stopScanningAsync();
     await peripheral.connectAsync();
     const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync(
@@ -33,6 +36,6 @@ let readData = async (name, characteristic) => {
 
     // read data again in t milliseconds
     setTimeout(() => {
-        readData(characteristic);
-    }, 10);
+        readData(name, characteristic);
+    }, 100);
 };

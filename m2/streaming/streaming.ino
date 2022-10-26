@@ -78,8 +78,8 @@ void loop() {
 
         // Write data over BLE.
         accelerometerCharacteristicX.writeValue(x);
-        accelerometerCharacteristicX.writeValue(y);
-        accelerometerCharacteristicX.writeValue(z);
+        accelerometerCharacteristicY.writeValue(y);
+        accelerometerCharacteristicZ.writeValue(z);
 
         // Wait 100 ms
         delay(100);
