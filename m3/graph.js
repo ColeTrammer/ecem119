@@ -54,9 +54,9 @@ const ws = new WebSocket("ws://localhost:8080");
 ws.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
     const dataset = (() => {
-        if (data.name === "x") {
+        if (data.name === "ax") {
             return xData;
-        } else if (data.name === "y") {
+        } else if (data.name === "ay") {
             return yData;
         } else {
             return zData;

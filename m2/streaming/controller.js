@@ -13,7 +13,9 @@ noble.on("stateChange", async (state) => {
 });
 
 noble.on("discover", async (peripheral) => {
+    console.log(peripheral.advertisement);
     if (peripheral.advertisement.localName !== "Cole's Nano 33 IoT") {
+        console.log("rejected");
         return;
     }
     await noble.stopScanningAsync();

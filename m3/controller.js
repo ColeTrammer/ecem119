@@ -21,6 +21,7 @@ noble.on("discover", async (peripheral) => {
     if (peripheral.advertisement.localName !== "Cole's Nano 33 IoT") {
         return;
     }
+    console.log("Connecting to ", peripheral.advertisement.localName);
     await noble.stopScanningAsync();
     await peripheral.connectAsync();
     const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync(
@@ -39,22 +40,22 @@ const wss = new WebSocketServer({ port: 8080 });
 //
 let readData = async (name, characteristic) => {
     const value = await characteristic.readAsync();
-    console.log(`${name}: ${value.readFloatLE(0)}`);
+    // console.log(`${name}: ${value.readFloatLE(0)}`);
 
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
-            client.send({
+            client.send(JSON.stringify({
                 name,
                 value: value.readFloatLE(0),
                 timestamp: new Date().toISOString(),
-            });
+            }));
         }
     });
 
     // read data again in t milliseconds
     setTimeout(() => {
         readData(name, characteristic);
-    }, 10);
+    }, 300);
 };
 
 const app = express();
