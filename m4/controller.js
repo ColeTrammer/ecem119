@@ -44,11 +44,13 @@ let readData = async (name, characteristic) => {
 
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-                name,
-                value: value.readFloatLE(0),
-                timestamp: new Date().toISOString(),
-            }));
+            client.send(
+                JSON.stringify({
+                    name,
+                    value: value.readFloatLE(0),
+                    timestamp: new Date().toISOString(),
+                })
+            );
         }
     });
 
@@ -65,24 +67,39 @@ app.get("/", (req, res) => {
     res.sendFile(__dirname + "/index.html");
 });
 
-app.get("/graph.js", (req, res) => {
-    res.sendFile(__dirname + "/graph.js");
+app.get("/frontend.js", (req, res) => {
+    res.sendFile(__dirname + "/frontend.js");
 });
 
 app.listen(port, () => {
     console.log(`Server started @ http://localhost:${port}`);
 });
 
-// setInterval(() => {
-//     wss.clients.forEach((client) => {
-//         if (client.readyState === WebSocket.OPEN) {
-//             client.send(
-//                 JSON.stringify({
-//                     name: ["x", "y", "z"][Math.floor(Math.random() * 3)],
-//                     value: (Math.random() - 0.5) * 6,
-//                     timestamp: new Date().toISOString(),
-//                 })
-//             );
-//         }
-//     });
-// }, 100);
+setInterval(() => {
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(
+                JSON.stringify({
+                    left: {
+                        x: 20,
+                        y: 10,
+                        w: 20,
+                        h: 100,
+                    },
+                    right: {
+                        x: 760,
+                        y: 10,
+                        w: 20,
+                        h: 100,
+                    },
+                    ball: {
+                        x: 400,
+                        y: 200,
+                        r: 10,
+                    },
+                    score: "0-0",
+                })
+            );
+        }
+    });
+}, 100);
