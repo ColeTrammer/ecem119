@@ -3,6 +3,7 @@
 const noble = require("@abandonware/noble");
 const express = require("express");
 const fs = require("fs");
+const { validateHeaderValue } = require("http");
 
 const WebSocket = require("ws");
 const WebSocketServer = WebSocket.WebSocketServer;
@@ -75,31 +76,69 @@ app.listen(port, () => {
     console.log(`Server started @ http://localhost:${port}`);
 });
 
+const gameState = {
+    objects: [
+        { p: [20, 10], w: 20, h: 100, a: [0, 0], v: [0, 0], name: "left" },
+        {
+            p: [760, 10],
+            w: 20,
+            h: 100,
+            a: [0, 0],
+            v: [0, 0],
+            name: "right",
+        },
+        {
+            p: [400, 200],
+            r: 10,
+            a: [0, 0],
+            v: [200, 200],
+            name: "ball",
+        },
+    ],
+    score: [0, 0],
+};
+
+// 60 fps
+const timeStep = 16.6666666;
+
 setInterval(() => {
+    for (const object of gameState.objects) {
+        // Velocity update
+        object.v[0] += (timeStep / 1000) * object.a[0];
+        object.v[1] += (timeStep / 1000) * object.a[1];
+
+        // Position update
+        object.p[0] += (timeStep / 1000) * object.v[0];
+        object.p[1] += (timeStep / 1000) * object.v[1];
+    }
+
+    // Check for collisions with the ball and the walls.
+    const ball = gameState.objects[2];
+    if (ball.p[1] - ball.r <= 0) {
+        ball.v[1] *= -1;
+    } else if (ball.p[1] + ball.r >= 400) {
+        ball.v[1] *= -1;
+    }
+    if (ball.p[0] - ball.r <= 0) {
+        ball.v = [200, 200];
+        ball.p = [400, 200];
+        gameState.score[1]++;
+    } else if (ball.p[0] + ball.r >= 800) {
+        ball.v = [-200, 200];
+        ball.p = [400, 200];
+        gameState.score[0]++;
+    }
+
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(
                 JSON.stringify({
-                    left: {
-                        x: 20,
-                        y: 10,
-                        w: 20,
-                        h: 100,
-                    },
-                    right: {
-                        x: 760,
-                        y: 10,
-                        w: 20,
-                        h: 100,
-                    },
-                    ball: {
-                        x: 400,
-                        y: 200,
-                        r: 10,
-                    },
-                    score: "0-0",
+                    left: gameState.objects[0],
+                    right: gameState.objects[1],
+                    ball: gameState.objects[2],
+                    score: gameState.score.join("-"),
                 })
             );
         }
     });
-}, 100);
+}, timeStep);
