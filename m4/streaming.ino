@@ -1,91 +1,84 @@
-#include <ArduinoBLE.h>
 #include <Arduino_LSM6DS3.h>
+#include <WiFiNINA.h>
+#include <WiFiUdp.h>
 
-#define BLE_UUID_ACCELEROMETER_SERVICE "1101"
-#define BLE_UUID_ACCELEROMETER_X       "2101"
-#define BLE_UUID_ACCELEROMETER_Y       "2102"
-#define BLE_UUID_ACCELEROMETER_Z       "2103"
+extern char SECRET_SSID[];
+extern char SECRET_PASS[];
 
-#define BLE_DEVICE_NAME "Cole's Nano 33 IoT"
-#define BLE_LOCAL_NAME  "Cole's Nano 33 IoT"
+int status = WL_IDLE_STATUS;          // the Wi-Fi radio's status
+int ledState = LOW;                   // ledState used to set the LED
+unsigned long previousMillisInfo = 0; // will store last time Wi-Fi information was updated
+unsigned long previousMillisLED = 0;  // will store the last time LED was updated
+const int intervalInfo = 5000;        // interval at which to update the board information
 
-BLEService accelerometerService(BLE_UUID_ACCELEROMETER_SERVICE);
-
-BLEFloatCharacteristic accelerometerCharacteristicX(BLE_UUID_ACCELEROMETER_X, BLERead | BLENotify);
-BLEFloatCharacteristic accelerometerCharacteristicY(BLE_UUID_ACCELEROMETER_Y, BLERead | BLENotify);
-BLEFloatCharacteristic accelerometerCharacteristicZ(BLE_UUID_ACCELEROMETER_Z, BLERead | BLENotify);
-
-float x, y, z;
+WiFiUDP Udp;
+auto remote_ip = IPAddress(192, 168, 1, 8);
 
 void setup() {
+    // Initialize serial and wait for port to open:
     Serial.begin(9600);
     while (!Serial)
         ;
 
-    // initialize IMU
+    // Initialize IMU
     if (!IMU.begin()) {
-        Serial.println("Failed to initialize IMU!");
-        while (1)
+        Serial.println("Could not initialize the IMU");
+        for (;;)
             ;
     }
 
-    Serial.print("Accelerometer sample rate = ");
-    Serial.print(IMU.accelerationSampleRate());
-    Serial.println("Hz");
+    // attempt to connect to Wi-Fi network:
+    while (status != WL_CONNECTED) {
+        Serial.print("Attempting to connect to network: ");
+        Serial.println(SECRET_SSID);
+        // Connect to WPA/WPA2 network:
+        status = WiFi.begin(SECRET_SSID, SECRET_PASS);
 
-    // initialize BLE
-    if (!BLE.begin()) {
-        Serial.println("Starting Bluetooth® Low Energy module failed!");
-        while (1)
-            ;
+        // wait 10 seconds for connection:
+        delay(10000);
     }
 
-    // set advertised local name and service UUID
-    BLE.setDeviceName(BLE_DEVICE_NAME);
-    BLE.setLocalName(BLE_LOCAL_NAME);
-    BLE.setAdvertisedService(accelerometerService);
+    // you're connected now, so print out the data:
+    Serial.println("You're connected to the network");
+    Serial.println("---------------------------------------");
 
-    // add characteristics and service
-    accelerometerService.addCharacteristic(accelerometerCharacteristicX);
-    accelerometerService.addCharacteristic(accelerometerCharacteristicY);
-    accelerometerService.addCharacteristic(accelerometerCharacteristicZ);
+    // print your board's IP address:
+    IPAddress ip = WiFi.localIP();
+    Serial.print("IP Address: ");
+    Serial.println(ip);
 
-    BLE.addService(accelerometerService);
+    // print your network's SSID:
+    Serial.println();
+    Serial.println("Network Information:");
+    Serial.print("SSID: ");
+    Serial.println(WiFi.SSID());
 
-    // start advertising
-    BLE.advertise();
+    // print the received signal strength:
+    long rssi = WiFi.RSSI();
+    Serial.print("signal strength (RSSI):");
+    Serial.println(rssi);
+    Serial.println("---------------------------------------");
 
-    Serial.println("BLE Accelerometer Peripheral");
+    Udp.begin(2395);
+
+    Serial.print("Sending to ip=");
+    Serial.print(remote_ip);
+    Serial.print(", port=");
+    Serial.println(9999);
 }
 
 void loop() {
-    BLEDevice central = BLE.central();
-    if (!central) {
+    if (!IMU.accelerationAvailable() || !IMU.gyroscopeAvailable()) {
         return;
     }
 
-    Serial.print("Connected to central: ");
-    Serial.println(central.address());
+    float buffer[6];
+    IMU.readAcceleration(buffer[0], buffer[1], buffer[2]);
+    IMU.readGyroscope(buffer[3], buffer[4], buffer[5]);
 
-    // obtain and write accelerometer data
-    while (central.connected()) {
-        if (!IMU.accelerationAvailable()) {
-            continue;
-        }
+    Udp.beginPacket(remote_ip, 9999);
+    Udp.write((uint8_t*) buffer, sizeof(buffer));
+    Udp.endPacket();
 
-        // Read data from the IMU.
-        IMU.readAcceleration(x, y, z);
-
-        // Write data over BLE.
-        accelerometerCharacteristicX.writeValue(x);
-        accelerometerCharacteristicY.writeValue(y);
-        accelerometerCharacteristicZ.writeValue(z);
-
-        // Wait 10 ms
-        delay(10);
-    }
-
-    // when the central disconnects, print it out:
-    Serial.print(F("Disconnected from central: "));
-    Serial.println(central.address());
+    delay(100);
 }

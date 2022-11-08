@@ -1,39 +1,13 @@
 // based on the example on https://www.npmjs.com/package/@abandonware/noble
 
-const noble = require("@abandonware/noble");
 const express = require("express");
 const dgram = require("node:dgram");
 
 const WebSocket = require("ws");
 const WebSocketServer = WebSocket.WebSocketServer;
 
-const uuid_service = "1101";
-const uuid_values = ["2101", "2102", "2103"];
-
-noble.on("stateChange", async (state) => {
-    if (state === "poweredOn") {
-        console.log("start scanning");
-        await noble.startScanningAsync([uuid_service], false);
-    }
-});
-
-noble.on("discover", async (peripheral) => {
-    if (peripheral.advertisement.localName !== "Cole's Nano 33 IoT") {
-        return;
-    }
-    console.log("Connecting to ", peripheral.advertisement.localName);
-    await noble.stopScanningAsync();
-    await peripheral.connectAsync();
-    const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync(
-        [uuid_service],
-        uuid_values
-    );
-    readData("ax", characteristics[0]);
-    readData("ay", characteristics[1]);
-    readData("az", characteristics[2]);
-});
-
 const udpserver = dgram.createSocket("udp4");
+let currentIMUData = [0, 0, 0, 0, 0, 0];
 
 udpserver.on("error", console.error);
 
@@ -43,8 +17,7 @@ udpserver.on("message", (msg, rinfo) => {
         values.push(msg.readFloatLE(offset));
     }
 
-    const [ax, ay, az, gx, gy, gz] = values;
-    console.log(values);
+    currentIMUData = values;
 });
 
 udpserver.on("listening", () => {
@@ -144,8 +117,15 @@ const gameState = {
 setInterval(() => {
     const [left, right, ball] = gameState.objects;
 
+    // Update left paddle based on IMU data.
+    let vvv = currentIMUData[2] - 1;
+    if (Math.abs(vvv) < 0.1) {
+        vvv = 0;
+    }
+    left.a[1] = (currentIMUData[2] - 1) * 5000;
+
     // Implement AI for the paddles.
-    for (const paddle of [left, right]) {
+    for (const paddle of [right]) {
         const cy = paddle.p[1] + paddle.h / 2;
         if (cy <= ball.p[1]) {
             paddle.v[1] = AI_VY_MAG;
