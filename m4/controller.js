@@ -2,8 +2,7 @@
 
 const noble = require("@abandonware/noble");
 const express = require("express");
-const fs = require("fs");
-const { validateHeaderValue } = require("http");
+const dgram = require("node:dgram");
 
 const WebSocket = require("ws");
 const WebSocketServer = WebSocket.WebSocketServer;
@@ -33,6 +32,27 @@ noble.on("discover", async (peripheral) => {
     readData("ay", characteristics[1]);
     readData("az", characteristics[2]);
 });
+
+const udpserver = dgram.createSocket("udp4");
+
+udpserver.on("error", console.error);
+
+udpserver.on("message", (msg, rinfo) => {
+    const values = [];
+    for (const offset of [0, 4, 8, 12, 16, 20]) {
+        values.push(msg.readFloatLE(offset));
+    }
+
+    const [ax, ay, az, gx, gy, gz] = values;
+    console.log(values);
+});
+
+udpserver.on("listening", () => {
+    const address = udpserver.address();
+    console.log(`UDP server started @ ${address.address}:${address.port}`);
+});
+
+udpserver.bind(9999);
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -73,7 +93,7 @@ app.get("/frontend.js", (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`Server started @ http://localhost:${port}`);
+    console.log(`HTTP server started @ http://localhost:${port}`);
 });
 
 const ARENA_WIDTH = 800;
