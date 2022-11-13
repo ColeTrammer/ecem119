@@ -81,9 +81,9 @@ const BALL_VY_MAG = 220;
 const BALL_V_MAG = Math.sqrt(BALL_VX_MAG * BALL_VX_MAG + BALL_VY_MAG * BALL_VY_MAG);
 const BALL_RADIUS = 10;
 
-const AI_VY_MAG = 0.85 * BALL_VY_MAG;
+const AI_VY_MAG = 0.75 * BALL_VY_MAG;
 
-const TIME_STEP_MS = 1000 / 60;
+const TIME_STEP_MS = 1000 / 104;
 
 const gameState = {
     objects: [
@@ -118,11 +118,11 @@ setInterval(() => {
     const [left, right, ball] = gameState.objects;
 
     // Update left paddle based on IMU data.
-    let vvv = currentIMUData[2] - 1;
+    let vvv = currentIMUData[2]; /*- 1*/
     if (Math.abs(vvv) < 0.1) {
         vvv = 0;
     }
-    left.a[1] = (currentIMUData[2] - 1) * 5000;
+    left.a[1] = vvv * 5000;
 
     // Implement AI for the paddles.
     for (const paddle of [right]) {
@@ -164,8 +164,6 @@ setInterval(() => {
     }
 
     // Check for collisions between ball and paddles.
-    // Clamp paddle in bounds.
-    // Clamp paddle in bounds.
     // See this article for computing the intersection between a circle and rectangle:
     // https://www.geeksforgeeks.org/check-if-any-point-overlaps-the-given-circle-and-rectangle/#:~:text=In%20order%20to%20check%20whether,that%20both%20the%20shapes%20intersect.
     for (const paddle of [left, right]) {
@@ -187,6 +185,7 @@ setInterval(() => {
         }
     }
 
+    // Clamp paddle in bounds.
     for (const paddle of [left, right]) {
         const top = paddle.p[1];
         const bottom = paddle.p[1] + paddle.h;
