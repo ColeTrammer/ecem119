@@ -74,7 +74,7 @@ const ARENA_HEIGHT = 400;
 
 const PADDLE_MARGIN = 20;
 const PADDLE_WIDTH = 20;
-const PADDLE_HEIGHT = 100;
+const PADDLE_HEIGHT = 80;
 
 const BALL_VX_MAG = 220;
 const BALL_VY_MAG = 220;
@@ -82,6 +82,8 @@ const BALL_V_MAG = Math.sqrt(BALL_VX_MAG * BALL_VX_MAG + BALL_VY_MAG * BALL_VY_M
 const BALL_RADIUS = 10;
 
 const AI_VY_MAG = 0.75 * BALL_VY_MAG;
+
+const PLAYER_VY_MAG = BALL_VY_MAG;
 
 const TIME_STEP_MS = 1000 / 104;
 
@@ -118,11 +120,12 @@ setInterval(() => {
     const [left, right, ball] = gameState.objects;
 
     // Update left paddle based on IMU data.
-    let vvv = currentIMUData[2]; /*- 1*/
-    if (Math.abs(vvv) < 0.1) {
-        vvv = 0;
+    let sample = currentIMUData[2] - 1;
+    if (sample > 0.8) {
+        left.v[1] = PLAYER_VY_MAG;
+    } else if (sample < -0.8) {
+        left.v[1] = -PLAYER_VY_MAG;
     }
-    left.a[1] = vvv * 5000;
 
     // Implement AI for the paddles.
     for (const paddle of [right]) {
@@ -174,7 +177,7 @@ setInterval(() => {
         if (dx * dx + dy * dy <= ball.r * ball.r) {
             const effectiveHeight = paddle.h + 2 * ball.r;
             const relativeY = (ball.p[1] - (paddle.p[1] + paddle.h / 2)) / (effectiveHeight / 2);
-            const reflectionAngle = (Math.abs(relativeY) * Math.PI) / 2;
+            const reflectionAngle = (Math.abs(relativeY) * Math.PI) / 2.5;
 
             if (dx < 0) {
                 ball.v[0] = Math.abs(Math.cos(reflectionAngle)) * BALL_V_MAG;
