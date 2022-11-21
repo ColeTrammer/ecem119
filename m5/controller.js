@@ -7,6 +7,11 @@ const WebSocket = require("ws");
 const WebSocketServer = WebSocket.WebSocketServer;
 
 const udpserver = dgram.createSocket("udp4");
+const emaCoefficent = 0.01;
+let firstIMUPlayer1 = true;
+let firstIMUPlayer2 = true;
+let averageIMUDataPlayer1 = [0, 0, 0, 0, 0, 0];
+let averageIMUDataPlayer2 = [0, 0, 0, 0, 0, 0];
 let currentIMUDataPlayer1 = [0, 0, 0, 0, 0, 0];
 let currentIMUDataPlayer2 = [0, 0, 0, 0, 0, 0];
 
@@ -20,8 +25,28 @@ udpserver.on("message", (msg, rinfo) => {
 
     const player = msg.readInt32LE(0);
     if (player === 1) {
+        if (firstIMUPlayer1) {
+            averageIMUDataPlayer1 = values;
+            firstIMUPlayer1 = false;
+        } else {
+            for (let i = 0; i < 6; i++) {
+                averageIMUDataPlayer1[i] =
+                    emaCoefficent * values[i] + averageIMUDataPlayer1[i] * (1 - emaCoefficent);
+            }
+        }
+
         currentIMUDataPlayer1 = values;
     } else {
+        if (firstIMUPlayer2) {
+            averageIMUDataPlayer2 = values;
+            firstIMUPlayer2 = false;
+        } else {
+            for (let i = 0; i < 6; i++) {
+                averageIMUDataPlayer2[i] =
+                    emaCoefficent * values[i] + averageIMUDataPlayer2[i] * (1 - emaCoefficent);
+            }
+        }
+
         currentIMUDataPlayer2 = values;
     }
 });
@@ -127,21 +152,25 @@ setInterval(() => {
 
     // Update left paddle based on IMU data.
     {
-        let sample = currentIMUDataPlayer1[2] - 1;
-        if (sample > 0.8) {
+        let sample = currentIMUDataPlayer1[3] - averageIMUDataPlayer1[3];
+        if (sample > 32.0) {
             left.v[1] = PLAYER_VY_MAG;
-        } else if (sample < -0.8) {
+        } else if (sample < -32.0) {
             left.v[1] = -PLAYER_VY_MAG;
+        } else if (currentIMUDataPlayer1[4] - averageIMUDataPlayer1[4] < -32.0) {
+            left.v[1] = 0;
         }
     }
 
     // Update right paddle based on IMU data.
     {
-        let sample = currentIMUDataPlayer2[2] - 1;
-        if (sample > 0.8) {
-            left.v[1] = PLAYER_VY_MAG;
-        } else if (sample < -0.8) {
-            left.v[1] = -PLAYER_VY_MAG;
+        let sample = currentIMUDataPlayer2[3] - averageIMUDataPlayer2[3];
+        if (sample > 32.0) {
+            right.v[1] = PLAYER_VY_MAG;
+        } else if (sample < -32.0) {
+            right.v[1] = -PLAYER_VY_MAG;
+        } else if (currentIMUDataPlayer2[4] - averageIMUDataPlayer2[4] < -32.0) {
+            right.v[1] = 0;
         }
     }
 

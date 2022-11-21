@@ -17,8 +17,6 @@ auto remote_ip = IPAddress(192, 168, 1, 8);
 void setup() {
     // Initialize serial and wait for port to open:
     Serial.begin(9600);
-    while (!Serial)
-        ;
 
     // Initialize IMU
     if (!IMU.begin()) {
@@ -78,7 +76,7 @@ void loop() {
     };
 
     Data data;
-    data.player = 1;
+    data.player = 2;
 
     auto& buffer = data.data;
 
@@ -86,6 +84,6 @@ void loop() {
     IMU.readGyroscope(buffer[3], buffer[4], buffer[5]);
 
     Udp.beginPacket(remote_ip, 9999);
-    Udp.write((uint8_t*) data, sizeof(data));
+    Udp.write((uint8_t*) &data, sizeof(data));
     Udp.endPacket();
 }
