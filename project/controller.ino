@@ -36,22 +36,18 @@ const int intervalInfo = 5000;        // interval at which to update the board i
 WiFiUDP Udp;
 auto remote_ip = IPAddress(255, 255, 255, 255);
 
-// constants won't change. They're used here to set pin numbers:
-const int buttonPin = 2; // the number of the pushbutton pin
-const int ledPin = 13;   // the number of the LED pin
+const int buttonPins[] = {2, 3, 4};
 
 // variables will change:
-int buttonState = 0; // variable for reading the pushbutton status
+int buttonStates[] = {1, 1, 1}; // variable for reading the pushbutton status
 
 void setup() {
     Serial.begin(9600);
-    while (!Serial)
-        ;
 
-    // initialize the LED pin as an output:
-    pinMode(ledPin, OUTPUT);
     // initialize the pushbutton pin as an input:
-    pinMode(buttonPin, INPUT_PULLUP);
+    for (auto buttonPin : buttonPins) {
+        pinMode(buttonPin, INPUT_PULLUP);
+    }
 
     // attempt to connect to Wi-Fi network:
     while (status != WL_CONNECTED) {
@@ -96,26 +92,21 @@ void setup() {
 void loop() {
     // read the state of the pushbutton value:
 
-    auto oldState = buttonState;
-    buttonState = digitalRead(buttonPin);
+    int oldStates[3];
+    for (int button = 0; button < sizeof(buttonPins) / sizeof(*buttonPins); button++) {
+        oldStates[button] = buttonStates[button];
+        buttonStates[button] = digitalRead(buttonPins[button]);
 
-    // check if the pushbutton is pressed. If it is, the buttonState is HIGH:
-    if (buttonState == HIGH) {
-        // turn LED on:
-        digitalWrite(ledPin, HIGH);
-    } else {
-        // turn LED off:
-        digitalWrite(ledPin, LOW);
-    }
+        // Button press happened.
+        if (oldStates[button] == 0 && buttonStates[button] == 1) {
+            Serial.print("Toggling device ");
+            Serial.println(button);
 
-    // Button press happened.
-    if (oldState == 0 && buttonState == 1) {
-        Serial.println("Toggling device 1");
-
-        Udp.beginPacket(remote_ip, 8586);
-        char buffer[] = { 2, 1, 0, 0 };
-        Udp.write((uint8_t*) buffer, sizeof(buffer));
-        Udp.endPacket();
+            Udp.beginPacket(remote_ip, 8586);
+            char buffer[] = { 2, (char) (button + 1), 0, 0 };
+            Udp.write((uint8_t*) buffer, sizeof(buffer));
+            Udp.endPacket();
+        }
     }
 
     delay(30);
