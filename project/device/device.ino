@@ -1,6 +1,9 @@
 #include <WiFiNINA.h>
 #include <WiFiUdp.h>
 
+// The remote expects this to be 1, 2, or 3.
+#define DEVICE_NUMBER 1
+
 extern char SECRET_SSID[];
 extern char SECRET_PASS[];
 
@@ -9,10 +12,18 @@ unsigned long previousMillisInfo = 0; // will store last time Wi-Fi information 
 unsigned long previousMillisLED = 0;  // will store the last time LED was updated
 const int intervalInfo = 5000;        // interval at which to update the board information
 char buffer[255];
-int ledState = LOW;
+int state = 0;
 int ledPin = LED_BUILTIN;
 
 WiFiUDP Udp;
+
+void turnOn() {
+    digitalWrite(ledPin, HIGH);
+}
+
+void turnOff() {
+    digitalWrite(ledPin, LOW);
+}
 
 void setup() {
     Serial.begin(9600);
@@ -69,9 +80,13 @@ void loop() {
 
         int len = Udp.read(buffer, sizeof(buffer));
         if (len == 4) {
-            if (buffer[0] == 2 && buffer[1] == 1) {
-                ledState = !ledState;
-                digitalWrite(ledPin, ledState);
+            if (buffer[0] == 2 && buffer[1] == DEVICE_NUMBER) {
+                if (state == 0) {
+                    turnOn();
+                } else {
+                    turnOff();
+                }
+                state = !state;
             }
         }
     }
